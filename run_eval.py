@@ -29,7 +29,7 @@ def run_base_case():
         output_data["4-Gram"] = []
         for en_line, fr_line in tqdm(list(zip(en_lines, fr_lines))):
             inputs = tokenizer.encode(en_line, return_tensors="pt")
-            generation_output = model.generate(input_ids=inputs, num_beams=1, return_dict_in_generate=True, output_scores=True)
+            generation_output = model.generate(input_ids=inputs, num_beams=20, return_dict_in_generate=True, output_scores=True)
             output = tokenizer.decode(generation_output.sequences[0], skip_special_tokens=True)
             output_data["Original English"].append(en_line)
             output_data["Original French"].append(fr_line)
@@ -41,6 +41,6 @@ def run_base_case():
             output_data["4-Gram"].append(sentence_bleu([fr_line.split()], output.split(), weights=(0, 0, 0, 1)))
         # EndFor
         df=pd.DataFrame.from_dict(output_data,orient='index').transpose()
-        df.to_csv(OUTPUTS_PREFIX+en_fname[:-11]+".csv")
+        df.to_csv(OUTPUTS_PREFIX+en_fname[:-11]+"-beam.csv")
 
 run_base_case()

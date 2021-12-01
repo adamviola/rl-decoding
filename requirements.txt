@@ -1,5 +1,5 @@
-transformers
 sentencepiece
+transformers
 bs4
 tqdm
 nltk

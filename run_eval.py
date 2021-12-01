@@ -42,3 +42,5 @@ def run_base_case():
         # EndFor
         df=pd.DataFrame.from_dict(output_data,orient='index').transpose()
         df.to_csv(OUTPUTS_PREFIX+en_fname[:-11]+".csv")
+
+run_base_case()

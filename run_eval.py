@@ -1,5 +1,5 @@
 from transformers import MarianTokenizer, MarianMTModel
-from constants import DATA_PAIRS, DATA_PREFIX, OUTPUTS_PREFIX
+from constants import TEST_PAIRS, DATA_PREFIX, OUTPUTS_PREFIX
 from tqdm import tqdm
 from readsgm import readSGM
 from nltk.translate.bleu_score import sentence_bleu
@@ -14,7 +14,7 @@ def run_base_case():
     model = MarianMTModel.from_pretrained(model_name)
 
     output_data = {}
-    for en_fname, fr_fname in DATA_PAIRS:
+    for en_fname, fr_fname in TEST_PAIRS:
         en_loc = DATA_PREFIX+en_fname
         fr_loc = DATA_PREFIX+fr_fname
         en_lines = readSGM(en_loc)

@@ -1,7 +1,7 @@
 from readsgm import readSGM
-from constants import DATA_PAIRS, DATA_PREFIX, OUTPUTS_PREFIX
+from constants import TRAIN_PAIRS, DATA_PREFIX, OUTPUTS_PREFIX
 
-for en, fr in DATA_PAIRS:
+for en, fr in TRAIN_PAIRS:
     print(OUTPUTS_PREFIX+en[:-11]+".csv")
     en_loc = DATA_PREFIX+en 
     fr_loc = DATA_PREFIX+fr

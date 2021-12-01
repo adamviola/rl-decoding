@@ -1,4 +1,5 @@
 transformers
+sentencepiece
 bs4
 tqdm
 nltk

@@ -1,2 +1,5 @@
 transformers
 bs4
+tqdm
+nltk
+pandas

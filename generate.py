@@ -2,6 +2,7 @@ from transformers import MarianMTModel, MarianTokenizer
 import torch.nn.functional as F
 import torch
 import math
+from tqdm import tqdm
 
 model_name = 'Helsinki-NLP/opus-mt-en-fr'
 batch_size = 256
@@ -25,7 +26,7 @@ def generate_data(sentences, translations_per_sentence, model=None):
     rewards = []
 
     # Generate translations in batches
-    for i in range(0, math.ceil(len(sentences) / batch_size)):
+    for i in tqdm(range(0, math.ceil(len(sentences) / batch_size))):
         start = i * batch_size
         end = (i + 1) * batch_size
         batch = sentences[start:end]
@@ -80,8 +81,8 @@ def generate_data(sentences, translations_per_sentence, model=None):
 
     return list(zip(tokenized_sentences, tokenized_translations, rewards))
 
-sentences = ['Hello!', 'How are you?',  'I am fine.', 'I am fine.', 'Thank you Thank you Thank you Thank you Thank you Thank you Thank you']
+# sentences = ['Hello!', 'How are you?',  'I am fine.', 'I am fine.', 'Thank you Thank you Thank you Thank you Thank you Thank you Thank you']
 
-data = generate_data(sentences, 1)
+# data = generate_data(sentences, 1)
 
 # print(data[0])

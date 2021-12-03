@@ -1,5 +1,5 @@
 from transformers import MarianTokenizer, MarianMTModel
-from constants import TEST_PAIRS, DATA_PREFIX, OUTPUTS_PREFIX
+from constants import TEST_PAIRS, OUTPUTS_PREFIX
 from tqdm import tqdm
 from readsgm import readSGM
 from nltk.translate.bleu_score import sentence_bleu
@@ -18,8 +18,8 @@ def run_base_case(is_greedy = False):
 
     output_data = {}
     for en_fname, fr_fname in TEST_PAIRS:
-        en_loc = DATA_PREFIX+en_fname
-        fr_loc = DATA_PREFIX+fr_fname
+        en_loc = en_fname
+        fr_loc = fr_fname
         en_lines = readSGM(en_loc)
         fr_lines = readSGM(fr_loc)
         output_data["Original English"] = []
@@ -49,4 +49,4 @@ def run_base_case(is_greedy = False):
         else:
             df.to_csv(OUTPUTS_PREFIX+en_fname[:-11]+"-beam.csv")
 
-run_base_case()
+# run_base_case()

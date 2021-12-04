@@ -16,6 +16,7 @@ def generate_data(sentences, translations_per_sentence, model=None):
 
     if model is None:
         model = evaluator
+    model.to("cuda")
 
     pad_token_id = tokenizer.pad_token_id
 
@@ -32,11 +33,11 @@ def generate_data(sentences, translations_per_sentence, model=None):
         batch = sentences[start:end]
 
         # Tokenize batch of sentences
-        encoder_input = tokenizer(batch, return_tensors='pt', padding=True)
-        input_ids = encoder_input['input_ids']
-        attention_mask = encoder_input['attention_mask']
+        encoder_input = tokenizer(batch, return_tensors='pt', padding=True).to("cuda")
+        input_ids = encoder_input['input_ids'].to("cuda")
+        attention_mask = encoder_input['attention_mask'].to("cuda")
 
-        input_lengths = attention_mask.sum(dim=1)
+        input_lengths = attention_mask.sum(dim=1).to("cuda")
         for input_id, input_length in zip(input_ids, input_lengths):
             tokenized_sentences.append(input_id[:input_length])
 

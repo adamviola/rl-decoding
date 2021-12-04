@@ -13,6 +13,6 @@ def generate_dql_for(en_fname, translations_per_sentence, batch_size):
         end = (i + 1) * batch_size
         batch = en_lines[start:end]
         data = generate_data(batch, translations_per_sentence)
-        torch.save(data, DQL_DATA_PREFIX+en_fname[:-10]+str(translations_per_sentence)+".pt")
+        torch.save(data, DQL_DATA_PREFIX+en_fname[:-10]+str(translations_per_sentence)+"-"+str(i)+".pt")
 
 generate_dql_for("news-test2008-src.en.sgm", 16,50)

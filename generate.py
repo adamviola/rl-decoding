@@ -19,7 +19,6 @@ def generate_data(sentences, translations_per_sentence, model=None):
 
     if model is None:
         model = evaluator
-    model.to("cuda")
 
     pad_token_id = tokenizer.pad_token_id
 
@@ -31,6 +30,7 @@ def generate_data(sentences, translations_per_sentence, model=None):
 
     # Generate translations in batches
     for i in tqdm(range(0, math.ceil(len(sentences) / batch_size))):
+        # torch.cuda.empty_cache()
         start = i * batch_size
         end = (i + 1) * batch_size
         batch = sentences[start:end]

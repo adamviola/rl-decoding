@@ -54,10 +54,10 @@ class DeepQLearning(pl.LightningModule):
         rewards = [datum[2] for datum in batch]
 
         encoder_input_ids = nn.utils.rnn.pad_sequence(tokenized_sentences, batch_first=True)
-        encoder_mask = nn.utils.rnn.pad_sequence([torch.ones_like(input_id) for input_id in encoder_input_ids], batch_first=True)
+        encoder_mask = nn.utils.rnn.pad_sequence([torch.ones_like(input_id) for input_id in tokenized_sentences], batch_first=True)
         
         decoder_input_ids = nn.utils.rnn.pad_sequence(tokenized_translations, batch_first=True)
-        decoder_mask = nn.utils.rnn.pad_sequence([torch.ones_like(input_id) for input_id in decoder_input_ids], batch_first=True)
+        decoder_mask = nn.utils.rnn.pad_sequence([torch.ones_like(input_id) for input_id in tokenized_translations], batch_first=True)
 
         padded_rewards = nn.utils.rnn.pad_sequence(rewards, batch_first=True)
         reward_mask = nn.utils.rnn.pad_sequence([torch.ones_like(reward) for reward in rewards], batch_first=True)

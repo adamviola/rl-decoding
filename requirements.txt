@@ -5,3 +5,4 @@ tqdm
 nltk
 pandas
 pytorch-lightning
+test_tube

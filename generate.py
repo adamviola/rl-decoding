@@ -20,6 +20,7 @@ def generate_data(sentences, translations_per_sentence, model=None, progress=Tru
     pad_token_id = tokenizer.pad_token_id
 
     sentences = sentences * translations_per_sentence
+    sentences.sort()
 
     tokenized_sentences = []
     tokenized_translations = []
@@ -53,10 +54,6 @@ def generate_data(sentences, translations_per_sentence, model=None, progress=Tru
             output_scores=True,
             return_dict_in_generate=True
         )
-
-        # We pass tensors around instead of strings; noticed differences between tensor and decoded-encoded tensor
-        # # Decode translations
-        # translations.extend(tokenizer.batch_decode(results.sequences, skip_special_tokens=True))
 
         # Compute unpadded tokenized translations
         decoder_input_ids = results.sequences

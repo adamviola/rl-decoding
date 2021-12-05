@@ -25,12 +25,6 @@ class ReinforceBaseline(pl.LightningModule):
     def forward(self, x):
         return F.log_softmax(self.model(*x).logits, dim=2)
 
-
-        # old value stuff
-        # output = self.model.model(*x, output_hidden_states=True)['last_hidden_state']
-        # action_log_probs = F.log_softmax(self.model.lm_head(output) + self.model.final_logits_bias, dim=2)
-        # return self.model(*x)
-
     # Tells PyTorch Lightning how to do a training step
     def training_step(self, batch, batch_idx):
         # print('before train start', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())
@@ -49,33 +43,42 @@ class ReinforceBaseline(pl.LightningModule):
 
         actions = x[-2][:, 1:] # First "action" was the padding token
 
-        # Compute baseline: mean return across batch computed independently for each timestep
-        baseline = torch.sum(returns * reward_mask, dim=0, keepdim=True) / torch.sum(reward_mask, dim=0, keepdim=True)
+        # Compute baseline: mean reward across batch computed independently for unique input sentences
+        # Batch is made up of 8 different sentences each with 4 sampled translations
+        baseline = torch.nan_to_num(torch.sum((returns * reward_mask).view(self.batch_size // 4, 4, -1), dim=1, keepdim=True) / torch.sum(reward_mask.view(self.batch_size // 4, 4, -1), dim=1, keepdim=True))
 
-        advantages = returns - baseline
+        advantages = (returns.view(self.batch_size // 4, 4, -1) - baseline).view(self.batch_size, -1)
 
         # Last advantage and action_log_prob is for the </s> token, where we don't really take an action
         policy_losses = -advantages * action_log_probs[:,:-1].gather(2, actions.unsqueeze(2)).squeeze(2) * reward_mask
+        loss = policy_losses.sum() / reward_mask.sum()
 
-        return policy_losses.sum() / reward_mask.sum()
+        self.log('train_loss', loss)
+
+        return loss
 
 
-        # Baseline value function
+        # # Baseline value function
         # x, y = batch
-        
-        # action_log_probs, values = self(x)
+
+        # output = self.model.model(*x, output_hidden_states=True)['last_hidden_state']
+        # action_log_probs = F.log_softmax(self.model.lm_head(output) + self.model.final_logits_bias, dim=2)
+        # values = -torch.log(1 + torch.exp(-self.v_linear(output) + 5)).squeeze(2)
 
         # padded_rewards, reward_mask = y
         # batch_size, seq_len = padded_rewards.shape
 
         # # Compute returns starting from each state (including 0 return at </s> for value function)
-        # returns = torch.zeros((batch_size, seq_len + 1))
+        # returns = torch.zeros((batch_size, seq_len + 1), device=self.device)
         # returns[:, -2] = padded_rewards[:, -1]
         # for i in range(seq_len - 2, -1, -1):
         #     returns[:, i] = padded_rewards[:, i] + returns[:, i + 1] * reward_mask[:, i] # reward mask not necessary?
 
         # actions = x[-2][:, 1:] # First "action" was the padding token
         # value_mask = x[-1]
+
+        # print(x[0][:10])
+        # # print(values)
 
         # advantages = returns - values.detach()
 
@@ -86,6 +89,14 @@ class ReinforceBaseline(pl.LightningModule):
         # value_loss = value_losses.sum() / value_mask.sum()
         # policy_loss = policy_losses.sum() / reward_mask.sum()
 
+        # # print(policy_loss, value_loss)
+
+        # # self.log('polcy_loss', policy_loss)
+        # # self.log('value_loss', value_loss)
+        # # self.log('train_loss', policy_loss + value_loss)
+
+        # # if self.current_epoch < 10:
+        # #     return value_loss
         # return value_loss + policy_loss
 
     def validation_step(self, batch, batch_idx):
@@ -108,20 +119,20 @@ class ReinforceBaseline(pl.LightningModule):
 
     # Tells PyTorch Lightning which optimizer to use
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-6)
         return optimizer
 
     def train_dataloader(self):
         print(f"Generating {self.epoch_size} new translations and rewards...")
         # print('before train generate', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())
-        data = generate_data(list(np.random.choice(self.train_data, size=self.epoch_size)), 1, model=self.model, progress=False)
+        data = generate_data(list(np.random.choice(self.train_data, size=self.epoch_size // 4)), 4, model=self.model, progress=False)
         # print('after train generate', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())
         return DataLoader(data, self.batch_size, collate_fn=self.collate_fn)
     
     def val_dataloader(self):
         print(f"Sampling new validation translations and rewards...")
         # print('before val generate', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())
-        data = generate_data(self.val_data[:32], 4, model=self.model, progress=False)
+        data = generate_data(self.val_data, 4, model=self.model, progress=False)
         # print('after val generate', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())
         return DataLoader(data, self.batch_size, collate_fn=self.collate_fn)
 
@@ -132,10 +143,10 @@ class ReinforceBaseline(pl.LightningModule):
         rewards = [datum[2] for datum in batch]
         
         encoder_input_ids = nn.utils.rnn.pad_sequence(tokenized_sentences, batch_first=True).to(self.device)
-        encoder_mask = nn.utils.rnn.pad_sequence([torch.ones_like(input_id) for input_id in encoder_input_ids], batch_first=True).to(self.device)
+        encoder_mask = nn.utils.rnn.pad_sequence([torch.ones_like(input_id) for input_id in tokenized_sentences], batch_first=True).to(self.device)
         
         decoder_input_ids = nn.utils.rnn.pad_sequence(tokenized_translations, batch_first=True).to(self.device)
-        decoder_mask = nn.utils.rnn.pad_sequence([torch.ones_like(input_id) for input_id in decoder_input_ids], batch_first=True).to(self.device)
+        decoder_mask = nn.utils.rnn.pad_sequence([torch.ones_like(input_id) for input_id in tokenized_translations], batch_first=True).to(self.device)
 
         padded_rewards = nn.utils.rnn.pad_sequence(rewards, batch_first=True).to(self.device)
         reward_mask = nn.utils.rnn.pad_sequence([torch.ones_like(reward) for reward in rewards], batch_first=True).to(self.device)

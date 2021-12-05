@@ -49,7 +49,7 @@ callbacks = [
     EarlyStopping(monitor='val_loss', patience=5)
 ]
 
-# TODO: Implement validation for DQN
+# TODO: Implement validation for DQN, our own logging, fixed baseline based on greedy?, trainer.validate(model) before training
 
 # Train model
 trainer = pl.Trainer(callbacks=callbacks)

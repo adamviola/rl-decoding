@@ -48,6 +48,7 @@ trainer = pl.Trainer(
     reload_dataloaders_every_n_epochs=dataloader_interval,
     num_sanity_val_steps=0,
     check_val_every_n_epoch=val_interval,
-    log_every_n_steps=4
+    log_every_n_steps=4,
+    gpus=1 if torch.cuda.is_available() else 0
 )
 trainer.fit(learner)

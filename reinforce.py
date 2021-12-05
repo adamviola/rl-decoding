@@ -33,6 +33,7 @@ class ReinforceBaseline(pl.LightningModule):
 
     # Tells PyTorch Lightning how to do a training step
     def training_step(self, batch, batch_idx):
+        # print('before train start', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())
         x, y = batch
         
         action_log_probs = self(x)
@@ -41,7 +42,7 @@ class ReinforceBaseline(pl.LightningModule):
         batch_size, seq_len = padded_rewards.shape
 
         # Compute returns starting from each state (including 0 return at </s> for value function)
-        returns = torch.zeros((batch_size, seq_len))
+        returns = torch.zeros((batch_size, seq_len), device=self.device)
         returns[:, -1] = padded_rewards[:, -1]
         for i in range(seq_len - 2, -1, -1):
             returns[:, i] = padded_rewards[:, i] + returns[:, i + 1] * reward_mask[:, i] # reward mask not necessary?
@@ -101,37 +102,43 @@ class ReinforceBaseline(pl.LightningModule):
             total_log_prob += log_prob
             num_predictions += predictions
 
+        # print('val epoch end', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())
+
         self.log("mean_reward", total_log_prob / num_predictions)
 
     # Tells PyTorch Lightning which optimizer to use
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
         return optimizer
 
     def train_dataloader(self):
         print(f"Generating {self.epoch_size} new translations and rewards...")
+        # print('before train generate', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())
         data = generate_data(list(np.random.choice(self.train_data, size=self.epoch_size)), 1, model=self.model, progress=False)
-        return DataLoader(data, self.batch_size, collate_fn=ReinforceBaseline.collate_fn)
+        # print('after train generate', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())
+        return DataLoader(data, self.batch_size, collate_fn=self.collate_fn)
     
     def val_dataloader(self):
         print(f"Sampling new validation translations and rewards...")
-        data = generate_data(self.val_data, 4, model=self.model, progress=False)
-        return DataLoader(data, self.batch_size, collate_fn=ReinforceBaseline.collate_fn)
+        # print('before val generate', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())
+        data = generate_data(self.val_data[:32], 4, model=self.model, progress=False)
+        # print('after val generate', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())
+        return DataLoader(data, self.batch_size, collate_fn=self.collate_fn)
 
     # Collate function for PyTorch DataLoader
-    def collate_fn(batch):
+    def collate_fn(self, batch):
         tokenized_sentences = [datum[0] for datum in batch]
         tokenized_translations = [datum[1] for datum in batch]
         rewards = [datum[2] for datum in batch]
         
-        encoder_input_ids = nn.utils.rnn.pad_sequence(tokenized_sentences, batch_first=True)
-        encoder_mask = nn.utils.rnn.pad_sequence([torch.ones_like(input_id) for input_id in encoder_input_ids], batch_first=True)
+        encoder_input_ids = nn.utils.rnn.pad_sequence(tokenized_sentences, batch_first=True).to(self.device)
+        encoder_mask = nn.utils.rnn.pad_sequence([torch.ones_like(input_id) for input_id in encoder_input_ids], batch_first=True).to(self.device)
         
-        decoder_input_ids = nn.utils.rnn.pad_sequence(tokenized_translations, batch_first=True)
-        decoder_mask = nn.utils.rnn.pad_sequence([torch.ones_like(input_id) for input_id in decoder_input_ids], batch_first=True)
+        decoder_input_ids = nn.utils.rnn.pad_sequence(tokenized_translations, batch_first=True).to(self.device)
+        decoder_mask = nn.utils.rnn.pad_sequence([torch.ones_like(input_id) for input_id in decoder_input_ids], batch_first=True).to(self.device)
 
-        padded_rewards = nn.utils.rnn.pad_sequence(rewards, batch_first=True)
-        reward_mask = nn.utils.rnn.pad_sequence([torch.ones_like(reward) for reward in rewards], batch_first=True)
+        padded_rewards = nn.utils.rnn.pad_sequence(rewards, batch_first=True).to(self.device)
+        reward_mask = nn.utils.rnn.pad_sequence([torch.ones_like(reward) for reward in rewards], batch_first=True).to(self.device)
 
         x = (encoder_input_ids, encoder_mask, decoder_input_ids, decoder_mask)
         y = (padded_rewards, reward_mask)

@@ -47,7 +47,7 @@ def generate_data(sentences, translations_per_sentence, model=None, progress=Tru
         results = model.generate(
             input_ids=input_ids,
             attention_mask=attention_mask,
-            max_length=256,
+            max_length=128,
             num_beams=1,
             do_sample=True,
             output_scores=True,
@@ -60,6 +60,7 @@ def generate_data(sentences, translations_per_sentence, model=None, progress=Tru
 
         # Compute unpadded tokenized translations
         decoder_input_ids = results.sequences
+        # print(input_ids.shape, decoder_input_ids.shape)
         decoder_attention_mask = torch.zeros_like(decoder_input_ids).to(device)
         for i, sequence in enumerate(decoder_input_ids):
             pad_indices = (sequence[1:] == pad_token_id).nonzero()

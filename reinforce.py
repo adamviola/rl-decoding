@@ -55,8 +55,8 @@ class ReinforceBaseline(pl.LightningModule):
 
         self.log('train_loss', loss)
 
-        return loss
-
+        # Return loss and log_prob of each action
+        return { 'loss': loss, 'log_prob': torch.sum(padded_rewards).item(), 'num_predictions': torch.sum(reward_mask).item() }
 
         # # Baseline value function
         # x, y = batch
@@ -104,7 +104,16 @@ class ReinforceBaseline(pl.LightningModule):
         padded_rewards, reward_mask = y
 
         # Compute log_prob of each action
-        return torch.sum(padded_rewards), torch.sum(reward_mask)
+        return torch.sum(padded_rewards).item(), torch.sum(reward_mask).item()
+
+    def training_epoch_end(self, training_step_outputs):
+        total_log_prob = 0
+        num_predictions = 0
+        for output in training_step_outputs:
+            total_log_prob += output['log_prob']
+            num_predictions += output['num_predictions']
+
+        self.log("train_mean_log_prob", total_log_prob / num_predictions)
 
     def validation_epoch_end(self, validation_step_outputs):
         total_log_prob = 0
@@ -115,7 +124,7 @@ class ReinforceBaseline(pl.LightningModule):
 
         # print('val epoch end', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())
 
-        self.log("mean_reward", total_log_prob / num_predictions)
+        self.log("val_mean_log_prob", total_log_prob / num_predictions)
 
     # Tells PyTorch Lightning which optimizer to use
     def configure_optimizers(self):

@@ -31,11 +31,11 @@ learner = ReinforceBaseline(train_data, val_data, batch_size=batch_size, epoch_s
 
 callbacks = [
     ModelCheckpoint(
-        monitor='mean_reward',
-        filename='{epoch}-{mean_reward:.3f}',
+        monitor='val_mean_log_prob',
+        filename='{epoch}-{val_mean_log_prob:.3f}',
         mode='max',
     ),
-    EarlyStopping(monitor='mean_reward', patience=5, mode='max')
+    EarlyStopping(monitor='val_mean_log_prob', patience=5, mode='max')
 ]
 
 # Train model

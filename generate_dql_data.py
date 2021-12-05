@@ -14,4 +14,4 @@ def generate_dql_for(en_fname, translations_per_sentence):
     torch.save(data, DQL_DATA_PREFIX+en_fname[:-11]+str(translations_per_sentence)+".pt")
 
 if __name__ == '__main__':
-  generate_dql_for("newstest2009-src.en.sgm", 32)
+  generate_dql_for("newsdiscussdev2015-enfr-src.en.sgm", 32)

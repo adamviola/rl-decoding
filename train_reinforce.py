@@ -18,7 +18,7 @@ if not torch.cuda.is_available():
 batch_size = 32
 epoch_size = 256 # Size of generated training data/epoch
 dataloader_interval = 2 # How many times to re-use generated training data/epoch
-val_interval = 32 # Number of epochs before checking validation
+val_interval = 64 # Number of epochs before checking validation
 
 checkpoint_path = None
 

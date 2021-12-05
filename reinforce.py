@@ -9,14 +9,15 @@ from torch.utils.data import DataLoader
 from generate import generate_data
 
 class ReinforceBaseline(pl.LightningModule):
-    def __init__(self, sentences, batch_size=128, epoch_size=2048):
+    def __init__(self, train_data, val_data, batch_size=32, epoch_size=1024):
         super().__init__()
         model_name = 'Helsinki-NLP/opus-mt-en-fr'
         self.tokenizer = MarianTokenizer.from_pretrained(model_name)
         self.model = MarianMTModel.from_pretrained(model_name)
         # self.v_linear = nn.Linear(512, 1)
 
-        self.sentences = sentences
+        self.train_data = train_data
+        self.val_data = val_data
         self.batch_size = batch_size
         self.epoch_size = epoch_size
 
@@ -86,6 +87,22 @@ class ReinforceBaseline(pl.LightningModule):
 
         # return value_loss + policy_loss
 
+    def validation_step(self, batch, batch_idx):
+        _, y = batch
+        padded_rewards, reward_mask = y
+
+        # Compute log_prob of each action
+        return torch.sum(padded_rewards), torch.sum(reward_mask)
+
+    def validation_epoch_end(self, validation_step_outputs):
+        total_log_prob = 0
+        num_predictions = 0
+        for log_prob, predictions in validation_step_outputs:
+            total_log_prob += log_prob
+            num_predictions += predictions
+
+        self.log("mean_reward", total_log_prob / num_predictions)
+
     # Tells PyTorch Lightning which optimizer to use
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
@@ -93,7 +110,12 @@ class ReinforceBaseline(pl.LightningModule):
 
     def train_dataloader(self):
         print(f"Generating {self.epoch_size} new translations and rewards...")
-        data = generate_data(list(np.random.choice(self.sentences, size=self.epoch_size)), 1, model=self.model)
+        data = generate_data(list(np.random.choice(self.train_data, size=self.epoch_size)), 1, model=self.model, progress=False)
+        return DataLoader(data, self.batch_size, collate_fn=ReinforceBaseline.collate_fn)
+    
+    def val_dataloader(self):
+        print(f"Sampling new validation translations and rewards...")
+        data = generate_data(self.val_data, 4, model=self.model, progress=False)
         return DataLoader(data, self.batch_size, collate_fn=ReinforceBaseline.collate_fn)
 
     # Collate function for PyTorch DataLoader

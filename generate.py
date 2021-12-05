@@ -10,10 +10,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Sample translations from English sentences using the given model
 # Returns the rewards (log-probs) for each sentence using pre-trained MarianMTModel
-def generate_data(sentences, translations_per_sentence, model=None):
-    if device == 'cpu':
-        print('Warning: Running on CPU')
-
+def generate_data(sentences, translations_per_sentence, model=None, progress=True):
     tokenizer = MarianTokenizer.from_pretrained(model_name)
     evaluator = MarianMTModel.from_pretrained(model_name).to(device)
 
@@ -29,18 +26,20 @@ def generate_data(sentences, translations_per_sentence, model=None):
     rewards = []
 
     # Generate translations in batches
-    for i in tqdm(range(0, math.ceil(len(sentences) / batch_size))):
-        torch.cuda.empty_cache()
+    iterator = range(0, math.ceil(len(sentences) / batch_size))
+    for i in tqdm(iterator) if progress else iterator:
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         start = i * batch_size
         end = (i + 1) * batch_size
         batch = sentences[start:end]
 
         # Tokenize batch of sentences
-        encoder_input = tokenizer(batch, return_tensors='pt', padding=True).to("cuda")
-        input_ids = encoder_input['input_ids'].to("cuda")
-        attention_mask = encoder_input['attention_mask'].to("cuda")
+        encoder_input = tokenizer(batch, return_tensors='pt', padding=True)
+        input_ids = encoder_input['input_ids'].to(device)
+        attention_mask = encoder_input['attention_mask'].to(device)
 
-        input_lengths = attention_mask.sum(dim=1).to("cuda")
+        input_lengths = attention_mask.sum(dim=1)
         for input_id, input_length in zip(input_ids, input_lengths):
             tokenized_sentences.append(input_id[:input_length].cpu())
 

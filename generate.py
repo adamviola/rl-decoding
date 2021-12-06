@@ -10,7 +10,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Sample translations from English sentences using the given model
 # Returns the rewards (log-probs) for each sentence using pre-trained MarianMTModel
-def generate_data(sentences, translations_per_sentence, model=None, progress=True):
+def generate_data(sentences, translations_per_sentence, model=None, greedy=False, progress=True):
     tokenizer = MarianTokenizer.from_pretrained(model_name)
     evaluator = MarianMTModel.from_pretrained(model_name).to(device)
 
@@ -20,6 +20,7 @@ def generate_data(sentences, translations_per_sentence, model=None, progress=Tru
     pad_token_id = tokenizer.pad_token_id
 
     sentences = sentences * translations_per_sentence
+    sentences.sort()
 
     tokenized_sentences = []
     tokenized_translations = []
@@ -49,14 +50,10 @@ def generate_data(sentences, translations_per_sentence, model=None, progress=Tru
             attention_mask=attention_mask,
             max_length=128,
             num_beams=1,
-            do_sample=True,
+            do_sample=not greedy,
             output_scores=True,
             return_dict_in_generate=True
         )
-
-        # We pass tensors around instead of strings; noticed differences between tensor and decoded-encoded tensor
-        # # Decode translations
-        # translations.extend(tokenizer.batch_decode(results.sequences, skip_special_tokens=True))
 
         # Compute unpadded tokenized translations
         decoder_input_ids = results.sequences

@@ -22,8 +22,7 @@ class DeepQLearning(pl.LightningModule):
         # Useful because the rewards are always negative (and are often very small)
         return -torch.log(1 + torch.exp(-values))
 
-    # Tells PyTorch Lightning how to do a training step
-    def training_step(self, batch, batch_idx):
+    def compute_loss(self, batch):
         x, y = batch
         q = self(x) # approximation of q-values for all actions
 
@@ -42,9 +41,23 @@ class DeepQLearning(pl.LightningModule):
 
         return loss
 
+    # Tells PyTorch Lightning how to do a training step
+    def training_step(self, batch, batch_idx):
+        loss = self.compute_loss(batch)
+
+        self.log('train_loss', loss)
+
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        loss = self.compute_loss(batch)
+        
+        self.log('val_loss', loss)
+
+
     # Tells PyTorch Lightning which optimizer to use
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
         return optimizer
 
     # Collate function for PyTorch DataLoader
@@ -54,10 +67,10 @@ class DeepQLearning(pl.LightningModule):
         rewards = [datum[2] for datum in batch]
 
         encoder_input_ids = nn.utils.rnn.pad_sequence(tokenized_sentences, batch_first=True)
-        encoder_mask = nn.utils.rnn.pad_sequence([torch.ones_like(input_id) for input_id in encoder_input_ids], batch_first=True)
+        encoder_mask = nn.utils.rnn.pad_sequence([torch.ones_like(input_id) for input_id in tokenized_sentences], batch_first=True)
         
         decoder_input_ids = nn.utils.rnn.pad_sequence(tokenized_translations, batch_first=True)
-        decoder_mask = nn.utils.rnn.pad_sequence([torch.ones_like(input_id) for input_id in decoder_input_ids], batch_first=True)
+        decoder_mask = nn.utils.rnn.pad_sequence([torch.ones_like(input_id) for input_id in tokenized_translations], batch_first=True)
 
         padded_rewards = nn.utils.rnn.pad_sequence(rewards, batch_first=True)
         reward_mask = nn.utils.rnn.pad_sequence([torch.ones_like(reward) for reward in rewards], batch_first=True)

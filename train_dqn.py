@@ -2,55 +2,61 @@ import torch
 from dqn import DeepQLearning
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
+from pytorch_lightning.loggers import TestTubeLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
-from generate import generate_data
 
 def load_data(paths):
     data = []
     for path in paths:
+        print(f'Loading data from {path}')
         section = torch.load(path)
         data.extend(section)
     return data
 
-if not torch.cuda.is_available():
-    print("\n\nWARNING: No GPU found\n\n")
 
-batch_size = 32
+def train_dqn(checkpoint_path=None):
+    if not torch.cuda.is_available():
+        print("\n\nWARNING: No GPU found\n\n")
 
-checkpoint_path = None
+    batch_size = 32
 
-# Read in data
-train_data_paths = [
-    'train_data/news-test200832.pt',
-    'train_data/newstest200932.pt',
-    'train_data/newstest201032.pt',
-    'train_data/newstest201132.pt',
-    'train_data/newstest201232.pt',
-    'train_data/newstest2014-fren32.pt',
-] # Missing some I think
-train_data = load_data(train_data_paths)
-# val_data = load_data(['path/to/validation/data']) # Doesn't exist yet
+    # Read in data
+    train_data_paths = [
+        'train_data/news-test200832.pt',
+        'drive/MyDrive/DQL_Data/newstest200932.pt',
+        'drive/MyDrive/DQL_Data/newstest201032.pt',
+        'drive/MyDrive/DQL_Data/newstest201132.pt',
+        'drive/MyDrive/DQL_Data/newstest201232.pt',
+        'drive/MyDrive/DQL_Data/newstest2014-fren32.pt',
+    ]
+    train_data = load_data(train_data_paths)
+    val_data = load_data(['train_data/newsdiscussdev2015-enfr32.pt'])
 
-# Create dataloaders for data
-train_dataloader = DataLoader(train_data, batch_size, shuffle=True, collate_fn=DeepQLearning.collate_fn)
-# val_dataloader = DataLoader(val_data, batch_size, shuffle=True, collate_fn=DeepQLearning.collate_fn)
+    # Create dataloaders for data
+    train_dataloader = DataLoader(train_data, batch_size, shuffle=True, collate_fn=DeepQLearning.collate_fn)
+    val_dataloader = DataLoader(val_data, batch_size, collate_fn=DeepQLearning.collate_fn)
 
-if checkpoint_path:
-    model = DeepQLearning.load_from_checkpoint(checkpoint_path)
-else:
     learner = DeepQLearning()
 
-callbacks = [
-    ModelCheckpoint(
-        monitor='val_loss',
-        dirpath='./checkpoints/dqn/',
-        filename='{epoch}-{val_loss:.3f}'
-    ),
-    EarlyStopping(monitor='val_loss', patience=5)
-]
+    callbacks = [
+        ModelCheckpoint(
+            monitor='val_loss',
+            filename='{epoch}-{val_loss:.3f}',
+            save_last=True
+        ),
+        EarlyStopping(monitor='val_loss', patience=5)
+    ]
 
-# TODO: Implement validation for DQN, our own logging, fixed baseline based on greedy?, trainer.validate(model) before training
+    # Train model
+    logger = TestTubeLogger("drive/MyDrive/DQL_Data", name="dqn")
+    trainer = pl.Trainer(
+        callbacks=callbacks,
+        logger=logger,
+        val_check_interval=1/3,
+        accumulate_grad_batches=2,
+        gpus=1 if torch.cuda.is_available() else 0
+    )
+    trainer.fit(learner, train_dataloader, val_dataloader, ckpt_path=checkpoint_path)
 
-# Train model
-trainer = pl.Trainer(callbacks=callbacks)
-trainer.fit(learner, train_dataloader) #, val_dataloader)
+if __name__ == "__main__":
+    train_dqn()

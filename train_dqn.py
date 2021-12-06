@@ -52,6 +52,7 @@ def train_dqn(checkpoint_path=None):
     trainer = pl.Trainer(
         callbacks=callbacks,
         logger=logger,
+        val_check_interval=1/3,
         accumulate_grad_batches=2,
         gpus=1 if torch.cuda.is_available() else 0
     )

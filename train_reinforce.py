@@ -1,5 +1,5 @@
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, TQDMProgressBar
 from pytorch_lightning.loggers import TestTubeLogger
 import torch
 from readsgm import readSGM
@@ -35,7 +35,8 @@ def train_reinforce(checkpoint_path=None):
             filename='{epoch}-{val_mean_log_prob:.3f}',
             mode='max',
         ),
-        EarlyStopping(monitor='val_mean_log_prob', patience=5, mode='max')
+        EarlyStopping(monitor='val_mean_log_prob', patience=5, mode='max'),
+        TQDMProgressBar()
     ]
 
     # Train model

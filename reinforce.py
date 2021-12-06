@@ -136,14 +136,14 @@ class ReinforceBaseline(pl.LightningModule):
         return optimizer
 
     def train_dataloader(self):
-        print(f"Generating {self.epoch_size} new translations and rewards...")
+        # print(f"Generating {self.epoch_size} new translations and rewards...")
         # print('before train generate', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())
         data = generate_data(list(np.random.choice(self.train_data, size=self.epoch_size // 4)), 4, model=self.model, progress=False)
         # print('after train generate', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())
         return DataLoader(data, self.batch_size, collate_fn=self.collate_fn)
     
     def val_dataloader(self):
-        print(f"Greedily decoding new validation translations and computing log probs...")
+        # print(f"Greedily decoding new validation translations and computing log probs...")
         # print('before val generate', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())
         data = generate_data(self.val_data, 1, model=self.model, greedy=True, progress=False)
         # print('after val generate', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())

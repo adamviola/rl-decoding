@@ -34,6 +34,7 @@ def train_reinforce(checkpoint_path=None):
             monitor='val_mean_log_prob',
             filename='{epoch}-{val_mean_log_prob:.3f}',
             mode='max',
+            save_last=True
         ),
         EarlyStopping(monitor='val_mean_log_prob', patience=5, mode='max'),
         TQDMProgressBar()

@@ -41,7 +41,8 @@ def train_dqn(checkpoint_path=None):
     callbacks = [
         ModelCheckpoint(
             monitor='val_loss',
-            filename='{epoch}-{val_loss:.3f}'
+            filename='{epoch}-{val_loss:.3f}',
+            save_last=True
         ),
         EarlyStopping(monitor='val_loss', patience=5)
     ]

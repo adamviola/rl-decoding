@@ -10,5 +10,5 @@ def average_BLEU_data(filename):
     for cname in METRIC_COLUMNS:
         print(cname + ": " + str(np.mean(df[cname].tolist())))
 
-average_BLEU_data("newsdiscusstest2015-enfr-beam.csv")
-average_BLEU_data("newsdiscusstest2015-enfr-greedy.csv")
+average_BLEU_data("baseline-greedy.csv")
+average_BLEU_data("reinforce-greedy.csv")

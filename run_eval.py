@@ -6,7 +6,7 @@ from nltk.translate.bleu_score import sentence_bleu
 import pandas as pd
 
 
-def run_base_case(is_greedy = False):
+def run_eval_on(is_greedy = True, model = None):
     beam_count = 20
     if is_greedy:
         beam_count = 1
@@ -14,7 +14,10 @@ def run_base_case(is_greedy = False):
     # Filler Model Replace Later
     model_name = 'Helsinki-NLP/opus-mt-en-fr'
     tokenizer = MarianTokenizer.from_pretrained(model_name)
-    model = MarianMTModel.from_pretrained(model_name)
+    pretrained = MarianMTModel.from_pretrained(model_name)
+
+    if model == None:
+        model = pretrained
 
     output_data = {}
     for en_fname, fr_fname in TEST_PAIRS:

@@ -39,7 +39,7 @@ callbacks = [
 ]
 
 # Train model
-logger = TestTubeLogger("drive/MyDrive/DQLData", name="lightning_logs")
+logger = TestTubeLogger("drive/MyDrive/DQL_Data", name="reinforce")
 trainer = pl.Trainer(
     callbacks=callbacks,
     logger=logger,

@@ -53,10 +53,13 @@ class ReinforceBaseline(pl.LightningModule):
         policy_losses = -advantages * action_log_probs[:,:-1].gather(2, actions.unsqueeze(2)).squeeze(2) * reward_mask
         loss = policy_losses.sum() / reward_mask.sum()
 
-        self.log('train_loss', loss)
-
+        # We would like to log the training-set greedy-decode performance, but that requires a lot of compute
+        # self.log('train_loss', loss)
         # Return loss and log_prob of each action
-        return { 'loss': loss, 'log_prob': torch.sum(padded_rewards).item(), 'num_predictions': torch.sum(reward_mask).item() }
+        # return { 'loss': loss, 'log_prob': torch.sum(padded_rewards).item(), 'num_predictions': torch.sum(reward_mask).item() }
+        return loss
+
+
 
         # # Baseline value function
         # x, y = batch
@@ -99,32 +102,33 @@ class ReinforceBaseline(pl.LightningModule):
         # #     return value_loss
         # return value_loss + policy_loss
 
+    # def training_epoch_end(self, training_step_outputs):
+    #     total_log_prob = 0
+    #     num_predictions = 0
+    #     for output in training_step_outputs:
+    #         total_log_prob += output['log_prob']
+    #         num_predictions += output['num_predictions']
+
+    #     self.log("train_mean_log_prob", total_log_prob / num_predictions)
+
     def validation_step(self, batch, batch_idx):
         _, y = batch
-        padded_rewards, reward_mask = y
+        padded_rewards, _ = y
 
-        # Compute log_prob of each action
-        return torch.sum(padded_rewards).item(), torch.sum(reward_mask).item()
-
-    def training_epoch_end(self, training_step_outputs):
-        total_log_prob = 0
-        num_predictions = 0
-        for output in training_step_outputs:
-            total_log_prob += output['log_prob']
-            num_predictions += output['num_predictions']
-
-        self.log("train_mean_log_prob", total_log_prob / num_predictions)
+        # Compute total return
+        return torch.sum(padded_rewards).item(), padded_rewards.shape[0]
 
     def validation_epoch_end(self, validation_step_outputs):
         total_log_prob = 0
-        num_predictions = 0
-        for log_prob, predictions in validation_step_outputs:
+        total_trajectories = 0
+        for log_prob, trajectories in validation_step_outputs:
             total_log_prob += log_prob
-            num_predictions += predictions
+            total_trajectories += trajectories
 
         # print('val epoch end', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())
 
-        self.log("val_mean_log_prob", total_log_prob / num_predictions)
+        # Log mean log joint probability of validation set translations
+        self.log("val_mean_log_prob", total_log_prob / total_trajectories)
 
     # Tells PyTorch Lightning which optimizer to use
     def configure_optimizers(self):
@@ -139,9 +143,9 @@ class ReinforceBaseline(pl.LightningModule):
         return DataLoader(data, self.batch_size, collate_fn=self.collate_fn)
     
     def val_dataloader(self):
-        print(f"Sampling new validation translations and rewards...")
+        print(f"Greedily decoding new validation translations and computing log probs...")
         # print('before val generate', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())
-        data = generate_data(self.val_data, 4, model=self.model, progress=False)
+        data = generate_data(self.val_data, 1, model=self.model, greedy=True, progress=False)
         # print('after val generate', torch.cuda.memory_allocated(), torch.cuda.max_memory_allocated())
         return DataLoader(data, self.batch_size, collate_fn=self.collate_fn)
 

@@ -10,7 +10,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Sample translations from English sentences using the given model
 # Returns the rewards (log-probs) for each sentence using pre-trained MarianMTModel
-def generate_data(sentences, translations_per_sentence, model=None, progress=True):
+def generate_data(sentences, translations_per_sentence, model=None, greedy=False, progress=True):
     tokenizer = MarianTokenizer.from_pretrained(model_name)
     evaluator = MarianMTModel.from_pretrained(model_name).to(device)
 
@@ -50,7 +50,7 @@ def generate_data(sentences, translations_per_sentence, model=None, progress=Tru
             attention_mask=attention_mask,
             max_length=128,
             num_beams=1,
-            do_sample=True,
+            do_sample=not greedy,
             output_scores=True,
             return_dict_in_generate=True
         )

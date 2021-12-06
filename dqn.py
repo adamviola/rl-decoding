@@ -22,8 +22,7 @@ class DeepQLearning(pl.LightningModule):
         # Useful because the rewards are always negative (and are often very small)
         return -torch.log(1 + torch.exp(-values))
 
-    # Tells PyTorch Lightning how to do a training step
-    def training_step(self, batch, batch_idx):
+    def compute_loss(self, batch):
         x, y = batch
         q = self(x) # approximation of q-values for all actions
 
@@ -42,9 +41,23 @@ class DeepQLearning(pl.LightningModule):
 
         return loss
 
+    # Tells PyTorch Lightning how to do a training step
+    def training_step(self, batch, batch_idx):
+        loss = self.compute_loss(batch)
+
+        self.log('train_loss', loss)
+
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        loss = self.compute_loss(batch)
+        
+        self.log('val_loss', loss)
+
+
     # Tells PyTorch Lightning which optimizer to use
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
         return optimizer
 
     # Collate function for PyTorch DataLoader

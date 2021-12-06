@@ -2,12 +2,14 @@ import torch
 from dqn import DeepQLearning
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
+from pytorch_lightning.loggers import TestTubeLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from generate import generate_data
 
 def load_data(paths):
     data = []
     for path in paths:
+        print(f'Loading data from {path}')
         section = torch.load(path)
         data.extend(section)
     return data
@@ -22,35 +24,35 @@ checkpoint_path = None
 # Read in data
 train_data_paths = [
     'train_data/news-test200832.pt',
-    'train_data/newstest200932.pt',
-    'train_data/newstest201032.pt',
-    'train_data/newstest201132.pt',
-    'train_data/newstest201232.pt',
-    'train_data/newstest2014-fren32.pt',
-] # Missing some I think
+    'drive/MyDrive/DQL_Data/newstest200932.pt',
+    'drive/MyDrive/DQL_Data/newstest201032.pt',
+    'drive/MyDrive/DQL_Data/newstest201132.pt',
+    'drive/MyDrive/DQL_Data/newstest201232.pt',
+    'drive/MyDrive/DQL_Data/newstest2014-fren32.pt',
+]
 train_data = load_data(train_data_paths)
-# val_data = load_data(['path/to/validation/data']) # Doesn't exist yet
+val_data = load_data(['train_data/newsdiscussdev2015-enfr32.pt'])
 
 # Create dataloaders for data
 train_dataloader = DataLoader(train_data, batch_size, shuffle=True, collate_fn=DeepQLearning.collate_fn)
-# val_dataloader = DataLoader(val_data, batch_size, shuffle=True, collate_fn=DeepQLearning.collate_fn)
+val_dataloader = DataLoader(val_data, batch_size, collate_fn=DeepQLearning.collate_fn)
 
-if checkpoint_path:
-    model = DeepQLearning.load_from_checkpoint(checkpoint_path)
-else:
-    learner = DeepQLearning()
+learner = DeepQLearning()
 
 callbacks = [
     ModelCheckpoint(
         monitor='val_loss',
-        dirpath='./checkpoints/dqn/',
         filename='{epoch}-{val_loss:.3f}'
     ),
     EarlyStopping(monitor='val_loss', patience=5)
 ]
 
-# TODO: Implement validation for DQN, our own logging, fixed baseline based on greedy?, trainer.validate(model) before training
-
 # Train model
-trainer = pl.Trainer(callbacks=callbacks)
-trainer.fit(learner, train_dataloader) #, val_dataloader)
+logger = TestTubeLogger("drive/MyDrive/DQL_Data", name="dqn")
+trainer = pl.Trainer(
+    callbacks=callbacks,
+    logger=logger,
+    accumulate_grad_batches=2,
+    gpus=1 if torch.cuda.is_available() else 0
+)
+trainer.fit(learner, train_dataloader, val_dataloader, ckpt_path=checkpoint_path)

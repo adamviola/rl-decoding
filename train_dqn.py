@@ -1,6 +1,6 @@
 import torch
 from dqn import DeepQLearning
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, RandomSampler
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TestTubeLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
@@ -19,6 +19,7 @@ def train_dqn(checkpoint_path=None):
         print("\n\nWARNING: No GPU found\n\n")
 
     batch_size = 32
+    epoch_size = 3000 * batch_size
 
     # Read in data
     train_data_paths = [
@@ -33,7 +34,8 @@ def train_dqn(checkpoint_path=None):
     val_data = load_data(['train_data/newsdiscussdev2015-enfr32.pt'])
 
     # Create dataloaders for data
-    train_dataloader = DataLoader(train_data, batch_size, shuffle=True, collate_fn=DeepQLearning.collate_fn)
+    sampler= RandomSampler(train_data, replacement=True, num_samples=epoch_size)
+    train_dataloader = DataLoader(train_data, batch_size, sampler=sampler, collate_fn=DeepQLearning.collate_fn)
     val_dataloader = DataLoader(val_data, batch_size, collate_fn=DeepQLearning.collate_fn)
 
     learner = DeepQLearning()
@@ -52,7 +54,6 @@ def train_dqn(checkpoint_path=None):
     trainer = pl.Trainer(
         callbacks=callbacks,
         logger=logger,
-        val_check_interval=1/3,
         accumulate_grad_batches=2,
         gpus=1 if torch.cuda.is_available() else 0
     )

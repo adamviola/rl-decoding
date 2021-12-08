@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from generate import generate_data
 
 class ReinforceBaseline(pl.LightningModule):
-    def __init__(self, train_data, val_data, batch_size=32, epoch_size=1024):
+    def __init__(self, train_data=[], val_data=[], batch_size=32, epoch_size=1024):
         super().__init__()
         model_name = 'Helsinki-NLP/opus-mt-en-fr'
         self.tokenizer = MarianTokenizer.from_pretrained(model_name)
